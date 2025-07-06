@@ -108,7 +108,6 @@ const Home = ({ navigation }) => {
       </View>
       <Text style={styles.postText}>{item.post}</Text>
 
-      {/* Display post images */}
       {item.images && item.images.length > 0 && (
         <View style={styles.postImagesContainer}>
           {item.images.map((imageUrl, index) => (
