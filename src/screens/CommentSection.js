@@ -8,6 +8,10 @@ import {
   Image,
   TouchableOpacity,
   SafeAreaView,
+  Modal,
+  Alert,
+  TextInput,
+  Dimensions,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import {
@@ -19,6 +23,8 @@ import {
   doc,
   getDoc,
   getDocs,
+  deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { FIRESTORE_DB, auth } from "../services/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
@@ -38,6 +44,9 @@ const CommentSection = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
   const [error, setError] = useState(null);
+  const [showMenu, setShowMenu] = useState(null); // { type: 'comment'|'reply', id: string, x: number, y: number }
+  const [editingItem, setEditingItem] = useState(null); // { type: 'comment'|'reply', id: string, text: string }
+  const [editText, setEditText] = useState("");
 
   // Function to fetch user profile data
   const fetchUserProfile = async (userId) => {
@@ -115,7 +124,7 @@ const CommentSection = () => {
               setUserProfiles(updatedUserProfiles);
               setComments(commentsList);
 
-              // Now fetch replies for each comment
+              // fetch replies for each comment
               const repliesPromises = commentsList.map(async (comment) => {
                 try {
                   const repliesQuery = query(
@@ -328,12 +337,118 @@ const CommentSection = () => {
     }));
   };
 
+  // Menu handlers
+  const handleMenuPress = (type, id, event) => {
+    const { pageX, pageY } = event.nativeEvent;
+    setShowMenu({ type, id, x: pageX, y: pageY });
+  };
+
+  const handleCloseMenu = () => {
+    setShowMenu(null);
+  };
+
+  const handleDeleteComment = async (commentId) => {
+    try {
+      Alert.alert(
+        "Delete Comment",
+        "Are you sure you want to delete this comment?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await deleteDoc(doc(FIRESTORE_DB, "comments", commentId));
+              // Also delete all replies to this comment
+              const repliesQuery = query(
+                collection(FIRESTORE_DB, "replies"),
+                where("commentId", "==", commentId)
+              );
+              const repliesSnapshot = await getDocs(repliesQuery);
+              const deletePromises = repliesSnapshot.docs.map((doc) =>
+                deleteDoc(doc.ref)
+              );
+              await Promise.all(deletePromises);
+              setShowMenu(null);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      Alert.alert("Error", "Failed to delete comment. Please try again.");
+    }
+  };
+
+  const handleDeleteReply = async (replyId) => {
+    try {
+      Alert.alert(
+        "Delete Reply",
+        "Are you sure you want to delete this reply?",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              await deleteDoc(doc(FIRESTORE_DB, "replies", replyId));
+              setShowMenu(null);
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error deleting reply:", error);
+      Alert.alert("Error", "Failed to delete reply. Please try again.");
+    }
+  };
+
+  const handleEditComment = (commentId, currentText) => {
+    setEditingItem({ type: "comment", id: commentId });
+    setEditText(currentText);
+    setShowMenu(null);
+  };
+
+  const handleEditReply = (replyId, currentText) => {
+    setEditingItem({ type: "reply", id: replyId });
+    setEditText(currentText);
+    setShowMenu(null);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingItem || !editText.trim()) return;
+
+    try {
+      const collection_name =
+        editingItem.type === "comment" ? "comments" : "replies";
+      const field_name = editingItem.type === "comment" ? "comment" : "reply";
+
+      await updateDoc(doc(FIRESTORE_DB, collection_name, editingItem.id), {
+        [field_name]: editText.trim(),
+        editedAt: new Date(),
+      });
+
+      setEditingItem(null);
+      setEditText("");
+    } catch (error) {
+      console.error("Error updating:", error);
+      Alert.alert("Error", "Failed to save changes. Please try again.");
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingItem(null);
+    setEditText("");
+  };
+
   const renderReply = (reply, commentId) => {
     const userProfile = userProfiles[reply.userId] || {
       name: "Loading...",
       avatar: null,
     };
     const isCurrentUser = reply.userId === auth.currentUser?.uid;
+    const isEditing =
+      editingItem?.type === "reply" && editingItem?.id === reply.id;
 
     return (
       <View key={reply.id} style={styles.replyItem}>
@@ -349,10 +464,50 @@ const CommentSection = () => {
             </View>
           )}
           <View style={styles.replyContent}>
-            <Text style={styles.replyUserName}>
-              {isCurrentUser ? "You" : userProfile.name}
-            </Text>
-            <Text style={styles.replyText}>{reply.reply}</Text>
+            <View style={styles.replyTopRow}>
+              <Text style={styles.replyUserName}>
+                {isCurrentUser ? "You" : userProfile.name}
+              </Text>
+              {isCurrentUser && (
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={(event) => handleMenuPress("reply", reply.id, event)}
+                >
+                  <Ionicons name="ellipsis-horizontal" size={16} color="#666" />
+                </TouchableOpacity>
+              )}
+            </View>
+            {isEditing ? (
+              <View style={styles.editContainer}>
+                <TextInput
+                  style={styles.editInput}
+                  value={editText}
+                  onChangeText={setEditText}
+                  multiline
+                  autoFocus
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={handleCancelEdit}
+                  >
+                    <Text style={styles.editButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.editButton, styles.saveButton]}
+                    onPress={handleSaveEdit}
+                  >
+                    <Text
+                      style={[styles.editButtonText, styles.saveButtonText]}
+                    >
+                      Save
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <Text style={styles.replyText}>{reply.reply}</Text>
+            )}
           </View>
         </View>
       </View>
@@ -368,6 +523,8 @@ const CommentSection = () => {
     const commentReplies = replies[item.id] || [];
     const hasReplies = commentReplies.length > 0;
     const isExpanded = expandedComments[item.id] || false;
+    const isEditing =
+      editingItem?.type === "comment" && editingItem?.id === item.id;
 
     return (
       <View style={styles.commentItem}>
@@ -380,32 +537,76 @@ const CommentSection = () => {
             </View>
           )}
           <View style={styles.commentContent}>
-            <Text style={styles.userName}>
-              {isCurrentUser ? "You" : userProfile.name}
-            </Text>
-            <Text style={styles.commentText}>{item.comment}</Text>
-            <View style={styles.commentActions}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() => handleReply(item)}
-              >
-                <Text style={styles.actionText}>Reply</Text>
-              </TouchableOpacity>
-              {hasReplies && (
+            <View style={styles.commentTopRow}>
+              <Text style={styles.userName}>
+                {isCurrentUser ? "You" : userProfile.name}
+              </Text>
+              {isCurrentUser && (
                 <TouchableOpacity
-                  style={styles.actionButton}
-                  onPress={() => toggleReplies(item.id)}
+                  style={styles.menuButton}
+                  onPress={(event) =>
+                    handleMenuPress("comment", item.id, event)
+                  }
                 >
-                  <Text style={styles.actionText}>
-                    {isExpanded
-                      ? "Hide replies"
-                      : `View ${commentReplies.length} ${
-                          commentReplies.length === 1 ? "reply" : "replies"
-                        }`}
-                  </Text>
+                  <Ionicons name="ellipsis-horizontal" size={18} color="#666" />
                 </TouchableOpacity>
               )}
             </View>
+            {isEditing ? (
+              <View style={styles.editContainer}>
+                <TextInput
+                  style={styles.editInput}
+                  value={editText}
+                  onChangeText={setEditText}
+                  multiline
+                  autoFocus
+                />
+                <View style={styles.editActions}>
+                  <TouchableOpacity
+                    style={styles.editButton}
+                    onPress={handleCancelEdit}
+                  >
+                    <Text style={styles.editButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.editButton, styles.saveButton]}
+                    onPress={handleSaveEdit}
+                  >
+                    <Text
+                      style={[styles.editButtonText, styles.saveButtonText]}
+                    >
+                      Save
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <>
+                <Text style={styles.commentText}>{item.comment}</Text>
+                <View style={styles.commentActions}>
+                  <TouchableOpacity
+                    style={styles.actionButton}
+                    onPress={() => handleReply(item)}
+                  >
+                    <Text style={styles.actionText}>Reply</Text>
+                  </TouchableOpacity>
+                  {hasReplies && (
+                    <TouchableOpacity
+                      style={styles.actionButton}
+                      onPress={() => toggleReplies(item.id)}
+                    >
+                      <Text style={styles.actionText}>
+                        {isExpanded
+                          ? "Hide replies"
+                          : `View ${commentReplies.length} ${
+                              commentReplies.length === 1 ? "reply" : "replies"
+                            }`}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </>
+            )}
           </View>
         </View>
 
@@ -452,7 +653,6 @@ const CommentSection = () => {
               </Text>
             }
             contentContainerStyle={styles.commentsList}
-            // Add bottom padding to ensure content isn't hidden behind the input
             contentInset={{ bottom: 120 }}
             contentInsetAdjustmentBehavior="automatic"
           />
@@ -466,6 +666,78 @@ const CommentSection = () => {
         onCancelReply={handleCancelReply}
       />
       <Footer navigation={navigation} />
+
+      <Modal
+        visible={showMenu !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleCloseMenu}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleCloseMenu}
+        >
+          {showMenu && (
+            <View
+              style={[
+                styles.menuContainer,
+                {
+                  position: "absolute",
+                  top: Math.max(
+                    10,
+                    Math.min(
+                      showMenu.y - 60,
+                      Dimensions.get("window").height - 120
+                    )
+                  ),
+                  left: Math.max(
+                    10,
+                    Math.min(
+                      showMenu.x - 75,
+                      Dimensions.get("window").width - 160
+                    )
+                  ),
+                },
+              ]}
+            >
+              <View style={styles.menuTriangle} />
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  if (showMenu?.type === "comment") {
+                    const comment = comments.find((c) => c.id === showMenu.id);
+                    handleEditComment(showMenu.id, comment?.comment || "");
+                  } else if (showMenu?.type === "reply") {
+                    const reply = Object.values(replies)
+                      .flat()
+                      .find((r) => r.id === showMenu.id);
+                    handleEditReply(showMenu.id, reply?.reply || "");
+                  }
+                }}
+              >
+                <Ionicons name="create-outline" size={20} color="#333" />
+                <Text style={styles.menuText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.menuItem, styles.deleteMenuItem]}
+                onPress={() => {
+                  if (showMenu?.type === "comment") {
+                    handleDeleteComment(showMenu.id);
+                  } else if (showMenu?.type === "reply") {
+                    handleDeleteReply(showMenu.id);
+                  }
+                }}
+              >
+                <Ionicons name="trash-outline" size={20} color="#FF3A7C" />
+                <Text style={[styles.menuText, styles.deleteMenuText]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -595,6 +867,111 @@ const styles = StyleSheet.create({
   retryText: {
     color: "#FFFFFF",
     fontWeight: "bold",
+  },
+  // Menu styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  menuContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 10,
+    minWidth: 150,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  menuTriangle: {
+    position: "absolute",
+    top: -5,
+    right: 20,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 5,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#FFFFFF",
+  },
+  menuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+  },
+  deleteMenuItem: {
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  menuText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#333",
+  },
+  deleteMenuText: {
+    color: "#FF3A7C",
+  },
+  menuButton: {
+    padding: 5,
+    borderRadius: 15,
+  },
+  // Top row styles for comments and replies
+  commentTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 5,
+  },
+  replyTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 3,
+  },
+  // Edit styles
+  editContainer: {
+    marginTop: 5,
+  },
+  editInput: {
+    borderWidth: 1,
+    borderColor: "#DDD",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 14,
+    minHeight: 60,
+    textAlignVertical: "top",
+  },
+  editActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginTop: 10,
+    gap: 10,
+  },
+  editButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#DDD",
+  },
+  saveButton: {
+    backgroundColor: "#FF3A7C",
+    borderColor: "#FF3A7C",
+  },
+  editButtonText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  saveButtonText: {
+    color: "#FFFFFF",
   },
 });
 
