@@ -44,9 +44,10 @@ const CommentSection = () => {
   const [replyingTo, setReplyingTo] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
   const [error, setError] = useState(null);
-  const [showMenu, setShowMenu] = useState(null); // { type: 'comment'|'reply', id: string, x: number, y: number }
-  const [editingItem, setEditingItem] = useState(null); // { type: 'comment'|'reply', id: string, text: string }
+  const [showMenu, setShowMenu] = useState(null);
+  const [editingItem, setEditingItem] = useState(null);
   const [editText, setEditText] = useState("");
+  const [postOwnerUserId, setPostOwnerUserId] = useState(null);
 
   // Function to fetch user profile data
   const fetchUserProfile = async (userId) => {
@@ -77,6 +78,23 @@ const CommentSection = () => {
       };
     }
   };
+
+  // Fetch post owner information
+  useEffect(() => {
+    const fetchPostOwner = async () => {
+      try {
+        const postDoc = await getDoc(doc(FIRESTORE_DB, "post", postID));
+        if (postDoc.exists()) {
+          const postData = postDoc.data();
+          setPostOwnerUserId(postData.userId);
+        }
+      } catch (error) {
+        console.error("Error fetching post owner:", error);
+      }
+    };
+
+    fetchPostOwner();
+  }, [postID]);
 
   useEffect(() => {
     let isMounted = true;
@@ -447,6 +465,8 @@ const CommentSection = () => {
       avatar: null,
     };
     const isCurrentUser = reply.userId === auth.currentUser?.uid;
+    const isPostOwner = postOwnerUserId === auth.currentUser?.uid;
+    const canManage = isCurrentUser || isPostOwner;
     const isEditing =
       editingItem?.type === "reply" && editingItem?.id === reply.id;
 
@@ -468,7 +488,7 @@ const CommentSection = () => {
               <Text style={styles.replyUserName}>
                 {isCurrentUser ? "You" : userProfile.name}
               </Text>
-              {isCurrentUser && (
+              {canManage && (
                 <TouchableOpacity
                   style={styles.menuButton}
                   onPress={(event) => handleMenuPress("reply", reply.id, event)}
@@ -520,6 +540,8 @@ const CommentSection = () => {
       avatar: null,
     };
     const isCurrentUser = item.userID === auth.currentUser?.uid;
+    const isPostOwner = postOwnerUserId === auth.currentUser?.uid;
+    const canManage = isCurrentUser || isPostOwner;
     const commentReplies = replies[item.id] || [];
     const hasReplies = commentReplies.length > 0;
     const isExpanded = expandedComments[item.id] || false;
@@ -541,7 +563,7 @@ const CommentSection = () => {
               <Text style={styles.userName}>
                 {isCurrentUser ? "You" : userProfile.name}
               </Text>
-              {isCurrentUser && (
+              {canManage && (
                 <TouchableOpacity
                   style={styles.menuButton}
                   onPress={(event) =>
@@ -702,23 +724,41 @@ const CommentSection = () => {
               ]}
             >
               <View style={styles.menuTriangle} />
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  if (showMenu?.type === "comment") {
-                    const comment = comments.find((c) => c.id === showMenu.id);
-                    handleEditComment(showMenu.id, comment?.comment || "");
-                  } else if (showMenu?.type === "reply") {
-                    const reply = Object.values(replies)
-                      .flat()
-                      .find((r) => r.id === showMenu.id);
-                    handleEditReply(showMenu.id, reply?.reply || "");
-                  }
-                }}
-              >
-                <Ionicons name="create-outline" size={20} color="#333" />
-                <Text style={styles.menuText}>Edit</Text>
-              </TouchableOpacity>
+              {(() => {
+                // Determine if current user can edit (only owner can edit)
+                let canEdit = false;
+                if (showMenu?.type === "comment") {
+                  const comment = comments.find((c) => c.id === showMenu.id);
+                  canEdit = comment?.userID === auth.currentUser?.uid;
+                } else if (showMenu?.type === "reply") {
+                  const reply = Object.values(replies)
+                    .flat()
+                    .find((r) => r.id === showMenu.id);
+                  canEdit = reply?.userId === auth.currentUser?.uid;
+                }
+
+                return canEdit ? (
+                  <TouchableOpacity
+                    style={styles.menuItem}
+                    onPress={() => {
+                      if (showMenu?.type === "comment") {
+                        const comment = comments.find(
+                          (c) => c.id === showMenu.id
+                        );
+                        handleEditComment(showMenu.id, comment?.comment || "");
+                      } else if (showMenu?.type === "reply") {
+                        const reply = Object.values(replies)
+                          .flat()
+                          .find((r) => r.id === showMenu.id);
+                        handleEditReply(showMenu.id, reply?.reply || "");
+                      }
+                    }}
+                  >
+                    <Ionicons name="create-outline" size={20} color="#333" />
+                    <Text style={styles.menuText}>Edit</Text>
+                  </TouchableOpacity>
+                ) : null;
+              })()}
               <TouchableOpacity
                 style={[styles.menuItem, styles.deleteMenuItem]}
                 onPress={() => {

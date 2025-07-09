@@ -9,6 +9,9 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  Modal,
+  TextInput,
+  Dimensions,
 } from "react-native";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
@@ -19,6 +22,8 @@ import {
   collection,
   where,
   getDocs,
+  deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { auth } from "../services/FirebaseConfig";
 import { Ionicons } from "@expo/vector-icons";
@@ -28,7 +33,6 @@ import Likes from "../components/Likes";
 import FollowCount from "../components/FollowCount";
 import Comments from "../components/Comments";
 import EditProfile from "./EditProfile";
-import { Modal } from "react-native";
 
 const Profile = ({ navigation }) => {
   // Get userId in a safe way
@@ -44,6 +48,9 @@ const Profile = ({ navigation }) => {
   const [modalType, setModalType] = useState("error");
   const [selectedImage, setSelectedImage] = useState(null);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
+  const [showPostMenu, setShowPostMenu] = useState(null); // { postId: string, x: number, y: number }
+  const [editingPost, setEditingPost] = useState(null); // { postId: string, text: string }
+  const [editPostText, setEditPostText] = useState("");
 
   const showAlert = (message, type = "error") => {
     setModalMessage(message);
@@ -136,6 +143,109 @@ const Profile = ({ navigation }) => {
     fetchUserData();
   }, []);
 
+  // Post menu handlers
+  const handlePostMenuPress = (postId, event) => {
+    const { pageX, pageY } = event.nativeEvent;
+    setShowPostMenu({ postId, x: pageX, y: pageY });
+  };
+
+  const handleClosePostMenu = () => {
+    setShowPostMenu(null);
+  };
+
+  const handleEditPost = (postId, currentText) => {
+    setEditingPost({ postId });
+    setEditPostText(currentText);
+    setShowPostMenu(null);
+  };
+
+  const handleSavePostEdit = async () => {
+    if (!editingPost || !editPostText.trim()) return;
+
+    try {
+      await updateDoc(doc(FIRESTORE_DB, "post", editingPost.postId), {
+        post: editPostText.trim(),
+        editedAt: new Date(),
+      });
+
+      setEditingPost(null);
+      setEditPostText("");
+      showAlert("Post updated successfully!", "success");
+      fetchUserData(); // Refresh posts
+    } catch (error) {
+      console.error("Error updating post:", error);
+      showAlert("Failed to update post. Please try again.", "error");
+    }
+  };
+
+  const handleCancelPostEdit = () => {
+    setEditingPost(null);
+    setEditPostText("");
+  };
+
+  const handleDeletePost = async (postId) => {
+    try {
+      Alert.alert(
+        "Delete Post",
+        "Are you sure you want to delete this post? This will also delete all comments and replies.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Delete",
+            style: "destructive",
+            onPress: async () => {
+              // Delete the post
+              await deleteDoc(doc(FIRESTORE_DB, "post", postId));
+
+              // Delete all comments for this post
+              const commentsQuery = query(
+                collection(FIRESTORE_DB, "comments"),
+                where("postID", "==", postId)
+              );
+              const commentsSnapshot = await getDocs(commentsQuery);
+              const deleteCommentPromises = commentsSnapshot.docs.map((doc) =>
+                deleteDoc(doc.ref)
+              );
+
+              // Delete all replies for this post
+              const repliesQuery = query(
+                collection(FIRESTORE_DB, "replies"),
+                where("postID", "==", postId)
+              );
+              const repliesSnapshot = await getDocs(repliesQuery);
+              const deleteReplyPromises = repliesSnapshot.docs.map((doc) =>
+                deleteDoc(doc.ref)
+              );
+
+              // Delete all likes for this post
+              const likesQuery = query(
+                collection(FIRESTORE_DB, "likes"),
+                where("postID", "==", postId)
+              );
+              const likesSnapshot = await getDocs(likesQuery);
+              const deleteLikePromises = likesSnapshot.docs.map((doc) =>
+                deleteDoc(doc.ref)
+              );
+
+              await Promise.all([
+                ...deleteCommentPromises,
+                ...deleteReplyPromises,
+                ...deleteLikePromises,
+              ]);
+
+              setShowPostMenu(null);
+              showAlert("Post deleted successfully!", "success");
+              fetchUserData(); // Refresh posts
+            },
+          },
+        ]
+      );
+    } catch (error) {
+      console.error("Error deleting post:", error);
+      showAlert("Failed to delete post. Please try again.", "error");
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Header />
@@ -172,51 +282,101 @@ const Profile = ({ navigation }) => {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
-            renderItem={({ item }) => (
-              <View style={styles.postItem}>
-                <View style={styles.postHeader}>
-                  {avatarUrl ? (
-                    <Image
-                      source={{ uri: avatarUrl }}
-                      style={styles.miniAvatar}
-                    />
-                  ) : (
-                    <Ionicons
-                      name="person-circle-outline"
-                      size={45}
-                      color="#E1E2E6"
-                    />
-                  )}
-                  <Text style={styles.miniUserName}>
-                    {firstName} {lastName}
-                  </Text>
-                </View>
-                <Text style={styles.postText}>{item.post}</Text>
+            renderItem={({ item }) => {
+              const isEditing = editingPost?.postId === item.id;
 
-                {/* Display post images */}
-                {item.images && item.images.length > 0 && (
-                  <View style={styles.postImagesContainer}>
-                    {item.images.map((imageUrl, index) => (
+              return (
+                <View style={styles.postItem}>
+                  <View style={styles.postHeader}>
+                    {avatarUrl ? (
+                      <Image
+                        source={{ uri: avatarUrl }}
+                        style={styles.miniAvatar}
+                      />
+                    ) : (
+                      <Ionicons
+                        name="person-circle-outline"
+                        size={45}
+                        color="#E1E2E6"
+                      />
+                    )}
+                    <View style={styles.postHeaderContent}>
+                      <Text style={styles.miniUserName}>
+                        {firstName} {lastName}
+                      </Text>
                       <TouchableOpacity
-                        key={index}
-                        onPress={() => openImageModal(imageUrl)}
+                        style={styles.postMenuButton}
+                        onPress={(event) => handlePostMenuPress(item.id, event)}
                       >
-                        <Image
-                          source={{ uri: imageUrl }}
-                          style={styles.postImage}
-                          resizeMode="cover"
+                        <Ionicons
+                          name="ellipsis-horizontal"
+                          size={20}
+                          color="#666"
                         />
                       </TouchableOpacity>
-                    ))}
+                    </View>
                   </View>
-                )}
 
-                <View style={styles.footerPost}>
-                  <Likes postID={item.id} userID={userId} />
-                  <Comments postID={item.id} />
+                  {isEditing ? (
+                    <View style={styles.editPostContainer}>
+                      <TextInput
+                        style={styles.editPostInput}
+                        value={editPostText}
+                        onChangeText={setEditPostText}
+                        multiline
+                        autoFocus
+                      />
+                      <View style={styles.editPostActions}>
+                        <TouchableOpacity
+                          style={styles.editPostButton}
+                          onPress={handleCancelPostEdit}
+                        >
+                          <Text style={styles.editPostButtonText}>Cancel</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={[styles.editPostButton, styles.savePostButton]}
+                          onPress={handleSavePostEdit}
+                        >
+                          <Text
+                            style={[
+                              styles.editPostButtonText,
+                              styles.savePostButtonText,
+                            ]}
+                          >
+                            Save
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  ) : (
+                    <Text style={styles.postText}>{item.post}</Text>
+                  )}
+
+                  {/* Display post images */}
+                  {item.images && item.images.length > 0 && (
+                    <View style={styles.postImagesContainer}>
+                      {item.images.map((imageUrl, index) => (
+                        <TouchableOpacity
+                          key={index}
+                          onPress={() => openImageModal(imageUrl)}
+                        >
+                          <Image
+                            source={{ uri: imageUrl }}
+                            style={styles.postImage}
+                            resizeMode="cover"
+                          />
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
+
+                  <View style={styles.footerPost}>
+                    <Likes postID={item.id} userID={userId} />
+                    <Comments postID={item.id} />
+                  </View>
                 </View>
-              </View>
-            )}
+              );
+            }}
           />
         )}
         {selectedImage && (
@@ -238,6 +398,67 @@ const Profile = ({ navigation }) => {
         )}
       </View>
       <Footer navigation={navigation} />
+
+      {/* Post Menu Modal */}
+      <Modal
+        visible={showPostMenu !== null}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={handleClosePostMenu}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={handleClosePostMenu}
+        >
+          {showPostMenu && (
+            <View
+              style={[
+                styles.postMenuContainer,
+                {
+                  position: "absolute",
+                  top: Math.max(
+                    10,
+                    Math.min(
+                      showPostMenu.y - 60,
+                      Dimensions.get("window").height - 120
+                    )
+                  ),
+                  left: Math.max(
+                    10,
+                    Math.min(
+                      showPostMenu.x - 75,
+                      Dimensions.get("window").width - 160
+                    )
+                  ),
+                },
+              ]}
+            >
+              <View style={styles.postMenuTriangle} />
+              <TouchableOpacity
+                style={styles.postMenuItem}
+                onPress={() => {
+                  const post = posts.find((p) => p.id === showPostMenu.postId);
+                  handleEditPost(showPostMenu.postId, post?.post || "");
+                }}
+              >
+                <Ionicons name="create-outline" size={20} color="#333" />
+                <Text style={styles.postMenuText}>Edit</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.postMenuItem, styles.deletePostMenuItem]}
+                onPress={() => handleDeletePost(showPostMenu.postId)}
+              >
+                <Ionicons name="trash-outline" size={20} color="#FF3A7C" />
+                <Text style={[styles.postMenuText, styles.deletePostMenuText]}>
+                  Delete
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Modal>
+
       <CustomModals
         isVisible={modalVisible}
         onClose={() => setModalVisible(false)}
@@ -358,6 +579,106 @@ const styles = StyleSheet.create({
     top: 40,
     right: 20,
     zIndex: 1,
+  },
+  // Post header styles
+  postHeaderContent: {
+    flex: 1,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  postMenuButton: {
+    padding: 5,
+    borderRadius: 15,
+  },
+  // Post menu styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.3)",
+  },
+  postMenuContainer: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 10,
+    padding: 10,
+    minWidth: 150,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  postMenuTriangle: {
+    position: "absolute",
+    top: -5,
+    right: 20,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 5,
+    borderRightWidth: 5,
+    borderBottomWidth: 5,
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
+    borderBottomColor: "#FFFFFF",
+  },
+  postMenuItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 5,
+  },
+  deletePostMenuItem: {
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+  },
+  postMenuText: {
+    marginLeft: 10,
+    fontSize: 16,
+    color: "#333",
+  },
+  deletePostMenuText: {
+    color: "#FF3A7C",
+  },
+  // Post edit styles
+  editPostContainer: {
+    marginTop: 5,
+    marginLeft: 60,
+  },
+  editPostInput: {
+    borderWidth: 1,
+    borderColor: "#DDD",
+    borderRadius: 8,
+    padding: 10,
+    fontSize: 16,
+    minHeight: 80,
+    textAlignVertical: "top",
+    marginBottom: 10,
+  },
+  editPostActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 10,
+  },
+  editPostButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: "#DDD",
+  },
+  savePostButton: {
+    backgroundColor: "#FF3A7C",
+    borderColor: "#FF3A7C",
+  },
+  editPostButtonText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  savePostButtonText: {
+    color: "#FFFFFF",
   },
 });
 
