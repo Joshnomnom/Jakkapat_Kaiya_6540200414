@@ -48,8 +48,8 @@ const Profile = ({ navigation }) => {
   const [modalType, setModalType] = useState("error");
   const [selectedImage, setSelectedImage] = useState(null);
   const [isImageModalVisible, setIsImageModalVisible] = useState(false);
-  const [showPostMenu, setShowPostMenu] = useState(null); // { postId: string, x: number, y: number }
-  const [editingPost, setEditingPost] = useState(null); // { postId: string, text: string }
+  const [showPostMenu, setShowPostMenu] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
   const [editPostText, setEditPostText] = useState("");
 
   const showAlert = (message, type = "error") => {

@@ -221,11 +221,19 @@ const Post = ({ navigation }) => {
           />
         </View>
         <PostField
-          placeholder="Type Something..."
+          placeholder="Type Something... Use #hashtags to make your post discoverable!"
           value={post}
           onChangeText={setPost}
           style={styles.postField}
         />
+
+        {/* Hashtag helper */}
+        <View style={styles.hashtagHelper}>
+          <Text style={styles.hashtagHelperText}>
+            Add hashtags like #travel #food #nature to help others find your
+            post
+          </Text>
+        </View>
 
         <TouchableOpacity
           style={styles.imagePickerButton}
@@ -295,6 +303,22 @@ const styles = StyleSheet.create({
     top: 160,
     marginTop: 20,
   },
+  hashtagHelper: {
+    position: "absolute",
+    top: 370,
+    left: 30,
+    right: 30,
+    backgroundColor: "#F8F9FA",
+    padding: 10,
+    borderRadius: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: "#FF3A7C",
+  },
+  hashtagHelperText: {
+    fontSize: 12,
+    color: "#666",
+    fontStyle: "italic",
+  },
   imagePickerButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -302,7 +326,7 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 20,
     position: "absolute",
-    top: 400,
+    top: 430,
     left: 30,
   },
   imagePickerText: {
@@ -314,7 +338,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     position: "absolute",
-    top: 470,
+    top: 500,
     left: 80,
     right: 30,
   },
