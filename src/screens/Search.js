@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { FIRESTORE_DB } from "../services/FirebaseConfig";
+import { FIRESTORE_DB, auth } from "../services/FirebaseConfig";
 import {
   collection,
   query,
@@ -67,6 +67,9 @@ const Search = ({ navigation }) => {
     try {
       setLoadingSuggestions(true);
 
+      // Get current user ID
+      const currentUserId = auth.currentUser?.uid;
+
       const postsRef = collection(FIRESTORE_DB, "post");
       const postsSnapshot = await getDocs(postsRef);
 
@@ -79,6 +82,7 @@ const Search = ({ navigation }) => {
         }
       });
 
+      // Get users with posts and their post counts
       const usersRef = collection(FIRESTORE_DB, "users");
       const usersSnapshot = await getDocs(usersRef);
 
@@ -88,7 +92,8 @@ const Search = ({ navigation }) => {
         const userId = doc.id;
         const postCount = userPostCounts[userId] || 0;
 
-        if (postCount > 0) {
+        // Exclude current user and only include users with posts
+        if (postCount > 0 && userId !== currentUserId) {
           usersWithPostCounts.push({
             id: userId,
             ...userData,
@@ -97,6 +102,7 @@ const Search = ({ navigation }) => {
         }
       });
 
+      // Sort by post count (descending) and take top 5 (excluding current user)
       const topUsers = usersWithPostCounts
         .sort((a, b) => b.postCount - a.postCount)
         .slice(0, 5);
@@ -438,7 +444,7 @@ const Search = ({ navigation }) => {
         </View>
       ) : (
         <View style={styles.suggestionsContainer}>
-          <Text style={styles.suggestionsTitle}>🌟 Suggested Users</Text>
+          <Text style={styles.suggestionsTitle}>Suggested Users</Text>
           <Text style={styles.suggestionsSubtitle}>
             Most active users on the platform
           </Text>

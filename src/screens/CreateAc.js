@@ -32,7 +32,6 @@ const CreateAc = () => {
     setModalMessage(message);
   };
 
-  //สร้าง
   const handleSignup = async () => {
     // Check for empty email
     if (!email.trim()) {
@@ -69,8 +68,8 @@ const CreateAc = () => {
     }
 
     // Check password length
-    if (password.length < 6) {
-      showAlert("Password must be at least 6 characters long.", "error");
+    if (password.length < 8) {
+      showAlert("Password must be at least 8 characters long.", "error");
       return;
     }
 

@@ -153,9 +153,13 @@ const Post = ({ navigation }) => {
     }
   };
 
+  const removeImage = (indexToRemove) => {
+    setImages(images.filter((_, index) => index !== indexToRemove));
+  };
+
   const handlePost = async () => {
-    if (!post.trim()) {
-      showAlert("Post cannot be empty.", "error");
+    if (!post.trim() && images.length === 0) {
+      showAlert("Post cannot be empty or without images.", "error");
       return;
     }
 
@@ -240,13 +244,34 @@ const Post = ({ navigation }) => {
           onPress={handleImagePicker}
         >
           <Ionicons name="image" size={24} color="#FF3A7C" />
-          <Text style={styles.imagePickerText}>Add Photos</Text>
+          <Text style={styles.imagePickerText}>
+            Add Photos {images.length > 0 && `(${images.length}/4)`}
+          </Text>
         </TouchableOpacity>
+
+        {/* Clear All button - only show when images are selected */}
+        {images.length > 0 && (
+          <TouchableOpacity
+            style={styles.clearAllButton}
+            onPress={() => setImages([])}
+          >
+            <Ionicons name="trash" size={20} color="#FF3A7C" />
+            <Text style={styles.clearAllText}>Clear All</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Display selected images */}
         <View style={styles.imagePreviewContainer}>
           {images.map((uri, index) => (
-            <Image key={index} source={{ uri }} style={styles.imagePreview} />
+            <View key={index} style={styles.imageWrapper}>
+              <Image source={{ uri }} style={styles.imagePreview} />
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeImage(index)}
+              >
+                <Ionicons name="close-circle" size={24} color="#FF3A7C" />
+              </TouchableOpacity>
+            </View>
           ))}
         </View>
       </View>
@@ -305,7 +330,7 @@ const styles = StyleSheet.create({
   },
   hashtagHelper: {
     position: "absolute",
-    top: 370,
+    top: 390,
     left: 30,
     right: 30,
     backgroundColor: "#F8F9FA",
@@ -326,13 +351,29 @@ const styles = StyleSheet.create({
     padding: 10,
     borderRadius: 20,
     position: "absolute",
-    top: 430,
+    top: 450,
     left: 30,
   },
   imagePickerText: {
     marginLeft: 5,
     color: "#FF3A7C",
     fontWeight: "bold",
+  },
+  clearAllButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFE5E5",
+    padding: 8,
+    borderRadius: 15,
+    position: "absolute",
+    top: 450,
+    right: 30,
+  },
+  clearAllText: {
+    marginLeft: 5,
+    color: "#FF3A7C",
+    fontWeight: "bold",
+    fontSize: 12,
   },
   imagePreviewContainer: {
     flexDirection: "row",
@@ -342,11 +383,26 @@ const styles = StyleSheet.create({
     left: 80,
     right: 30,
   },
+  imageWrapper: {
+    position: "relative",
+    margin: 5,
+  },
   imagePreview: {
     width: 120,
     height: 120,
-    margin: 5,
     borderRadius: 8,
+  },
+  removeButton: {
+    position: "absolute",
+    top: -8,
+    right: -8,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
   },
 });
 
