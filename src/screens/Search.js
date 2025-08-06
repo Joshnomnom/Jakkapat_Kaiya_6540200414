@@ -102,7 +102,7 @@ const Search = ({ navigation }) => {
         }
       });
 
-      // Sort by post count (descending) and take top 5 (excluding current user)
+      // Sort by post count
       const topUsers = usersWithPostCounts
         .sort((a, b) => b.postCount - a.postCount)
         .slice(0, 5);

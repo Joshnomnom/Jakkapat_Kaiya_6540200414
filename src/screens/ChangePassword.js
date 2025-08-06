@@ -31,7 +31,6 @@ const ChangePassword = () => {
   };
 
   const handleChangePassword = async () => {
-    // Validate input fields - check for empty fields
     if (!currentPassword.trim()) {
       showAlert("Please enter your current password.", "error");
       return;
@@ -47,7 +46,6 @@ const ChangePassword = () => {
       return;
     }
 
-    // Check if new password is the same as current password
     if (newPassword === currentPassword) {
       showAlert(
         "New password must be different from your current password.",
@@ -61,13 +59,11 @@ const ChangePassword = () => {
       return;
     }
 
-    // Check password length
     if (newPassword.length < 6) {
       showAlert("New password must be at least 6 characters long.", "error");
       return;
     }
 
-    // Check password strength
     const hasUpperCase = /[A-Z]/.test(newPassword);
     const hasLowerCase = /[a-z]/.test(newPassword);
     const hasNumbers = /\d/.test(newPassword);
@@ -100,16 +96,13 @@ const ChangePassword = () => {
         return;
       }
 
-      // Reauthenticate user before changing password
       try {
         const credential = EmailAuthProvider.credential(email, currentPassword);
         await reauthenticateWithCredential(user, credential);
 
-        // Update password immediately after successful reauthentication
         await updatePassword(user, newPassword);
         showAlert("Password updated successfully!", "success");
 
-        // Clear form fields
         setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
@@ -141,7 +134,6 @@ const ChangePassword = () => {
             "error"
           );
 
-          // Sign out and redirect to sign in
           setTimeout(async () => {
             await signOut(auth);
             navigation.navigate("SignIn");

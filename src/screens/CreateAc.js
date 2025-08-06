@@ -33,25 +33,21 @@ const CreateAc = () => {
   };
 
   const handleSignup = async () => {
-    // Check for empty email
     if (!email.trim()) {
       showAlert("Please enter your email address.", "error");
       return;
     }
 
-    // Check for empty password
     if (!password) {
       showAlert("Please enter a password.", "error");
       return;
     }
 
-    // Check for empty confirm password
     if (!confirmPassword) {
       showAlert("Please confirm your password.", "error");
       return;
     }
 
-    // Enhanced email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       showAlert(
@@ -61,19 +57,16 @@ const CreateAc = () => {
       return;
     }
 
-    // Check if passwords match
     if (password !== confirmPassword) {
       showAlert("Passwords do not match. Please check and try again.", "error");
       return;
     }
 
-    // Check password length
     if (password.length < 8) {
       showAlert("Password must be at least 8 characters long.", "error");
       return;
     }
 
-    // Check password strength
     const hasUpperCase = /[A-Z]/.test(password);
     const hasLowerCase = /[a-z]/.test(password);
     const hasNumbers = /\d/.test(password);
@@ -95,7 +88,6 @@ const CreateAc = () => {
     } catch (error) {
       console.error("Error creating account:", error);
 
-      // Handle specific Firebase auth errors
       if (error.code === "auth/email-already-in-use") {
         showAlert(
           "This email is already in use. Please use a different email or sign in.",

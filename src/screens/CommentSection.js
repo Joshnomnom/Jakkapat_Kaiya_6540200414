@@ -49,10 +49,8 @@ const CommentSection = () => {
   const [editText, setEditText] = useState("");
   const [postOwnerUserId, setPostOwnerUserId] = useState(null);
 
-  // Function to fetch user profile data
   const fetchUserProfile = async (userId) => {
     try {
-      // Check if we already have this user's profile
       if (userProfiles[userId]) {
         return userProfiles[userId];
       }
@@ -79,7 +77,6 @@ const CommentSection = () => {
     }
   };
 
-  // Fetch post owner information
   useEffect(() => {
     const fetchPostOwner = async () => {
       try {
@@ -102,14 +99,12 @@ const CommentSection = () => {
     setError(null);
 
     try {
-      // Query comments for this post
       const q = query(
         collection(FIRESTORE_DB, "comments"),
         where("postID", "==", postID),
         orderBy("timestamp", "desc")
       );
 
-      // Set up real-time listener for comments
       const unsubscribe = onSnapshot(
         q,
         async (snapshot) => {
@@ -121,13 +116,11 @@ const CommentSection = () => {
               ...doc.data(),
             }));
 
-            // Get unique user IDs from comments
             const userIds = [
               ...new Set(commentsList.map((comment) => comment.userID)),
             ];
             const updatedUserProfiles = { ...userProfiles };
 
-            // Fetch user profiles in parallel
             const userProfilePromises = userIds.map(async (userId) => {
               const profile = await fetchUserProfile(userId);
               return { userId, profile };
@@ -142,7 +135,6 @@ const CommentSection = () => {
               setUserProfiles(updatedUserProfiles);
               setComments(commentsList);
 
-              // fetch replies for each comment
               const repliesPromises = commentsList.map(async (comment) => {
                 try {
                   const repliesQuery = query(
@@ -170,7 +162,6 @@ const CommentSection = () => {
               const repliesResults = await Promise.all(repliesPromises);
               const repliesObj = {};
 
-              // Process replies and get user profiles for reply authors
               const replyUserIds = new Set();
 
               repliesResults.forEach(({ commentId, replies }) => {
@@ -182,7 +173,6 @@ const CommentSection = () => {
                 }
               });
 
-              // Fetch profiles for reply authors
               if (replyUserIds.size > 0) {
                 const replyUserProfilePromises = Array.from(replyUserIds)
                   .map(async (userId) => {
@@ -227,7 +217,6 @@ const CommentSection = () => {
         }
       );
 
-      // Clean up listener on unmount
       return () => {
         isMounted = false;
         unsubscribe();
@@ -241,13 +230,11 @@ const CommentSection = () => {
     }
   }, [postID]);
 
-  // Set up a separate listener for replies to update in real-time
   useEffect(() => {
     if (comments.length === 0) return;
 
     let isMounted = true;
 
-    // Create a listener for the replies collection
     const repliesQuery = query(
       collection(FIRESTORE_DB, "replies"),
       where("postID", "==", postID)
@@ -259,7 +246,6 @@ const CommentSection = () => {
         if (!isMounted) return;
 
         try {
-          // Group replies by commentId
           const repliesObj = {};
           const replyUserIds = new Set();
 
@@ -275,7 +261,6 @@ const CommentSection = () => {
             replyUserIds.add(reply.userId);
           });
 
-          // Sort replies by timestamp
           Object.keys(repliesObj).forEach((commentId) => {
             repliesObj[commentId].sort((a, b) => {
               const timeA = a.timestamp?.toDate?.() || new Date(0);
@@ -284,7 +269,6 @@ const CommentSection = () => {
             });
           });
 
-          // Fetch any missing user profiles
           const updatedUserProfiles = { ...userProfiles };
           const missingUserIds = Array.from(replyUserIds).filter(
             (userId) => !updatedUserProfiles[userId]
@@ -339,10 +323,8 @@ const CommentSection = () => {
   };
 
   const handleCommentAdded = () => {
-    // Clear reply state after comment is added
     setReplyingTo(null);
 
-    // Scroll to top to show the new comment
     if (flatListRef.current) {
       flatListRef.current.scrollToOffset({ offset: 0, animated: true });
     }
@@ -355,7 +337,6 @@ const CommentSection = () => {
     }));
   };
 
-  // Menu handlers
   const handleMenuPress = (type, id, event) => {
     const { pageX, pageY } = event.nativeEvent;
     setShowMenu({ type, id, x: pageX, y: pageY });
@@ -632,7 +613,6 @@ const CommentSection = () => {
           </View>
         </View>
 
-        {/* Render replies if expanded */}
         {isExpanded && hasReplies && (
           <View style={styles.repliesContainer}>
             {commentReplies.map((reply) => renderReply(reply, item.id))}
@@ -657,7 +637,6 @@ const CommentSection = () => {
               onPress={() => {
                 setLoading(true);
                 setError(null);
-                // The useEffect will re-run and retry fetching
               }}
             >
               <Text style={styles.retryText}>Retry</Text>
@@ -725,7 +704,6 @@ const CommentSection = () => {
             >
               <View style={styles.menuTriangle} />
               {(() => {
-                // Determine if current user can edit (only owner can edit)
                 let canEdit = false;
                 if (showMenu?.type === "comment") {
                   const comment = comments.find((c) => c.id === showMenu.id);
@@ -908,7 +886,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontWeight: "bold",
   },
-  // Menu styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.3)",
@@ -963,7 +940,6 @@ const styles = StyleSheet.create({
     padding: 5,
     borderRadius: 15,
   },
-  // Top row styles for comments and replies
   commentTopRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -976,7 +952,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 3,
   },
-  // Edit styles
   editContainer: {
     marginTop: 5,
   },
