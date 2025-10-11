@@ -10,13 +10,11 @@ const CustomModals = ({
   confirmText = "OK",
   type = "error",
 }) => {
-  //เลือกรูปภาพระหว่าง error, success
   const imageSource =
     type === "success"
       ? require("../../assets/Success.png")
       : require("../../assets/Error.png");
 
-  //เลือกหัวข้อที่แสดงระหว่าง error, success
   const displayTitle = title
     ? title.charAt(0).toUpperCase() + title.slice(1)
     : type === "success"

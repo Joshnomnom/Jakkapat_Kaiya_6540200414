@@ -1,14 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { TouchableOpacity, Text, StyleSheet, View, Image } from "react-native";
-import { FIRESTORE_DB, auth } from "../services/FirebaseConfig";
+import { FIRESTORE_DB } from "../services/FirebaseConfig";
 import {
   doc,
   setDoc,
   deleteDoc,
-  getDoc,
   collection,
-  query,
-  where,
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
@@ -17,39 +14,37 @@ const Likes = ({ postID, userID }) => {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
 
-  const likeDocRef = doc(FIRESTORE_DB, "likes", `${postID}_${userID}`);
-  const likeCollectionRef = collection(FIRESTORE_DB, "likes");
-
   useEffect(() => {
-    const checkLikeStatus = async () => {
-      const docSnap = await getDoc(likeDocRef);
-      if (docSnap.exists()) {
-        setLiked(true);
-      }
-    };
+    if (!postID || !userID) return;
 
-    // จำนวนไลค์แบบลไทม์
-    const q = query(likeCollectionRef, where("postID", "==", postID));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const likeCollectionRef = collection(FIRESTORE_DB, "post", postID, "likes");
+
+    // Listen to like count and check if current user has liked
+    const unsubscribe = onSnapshot(likeCollectionRef, (snapshot) => {
       setLikeCount(snapshot.size);
+      setLiked(snapshot.docs.some((doc) => doc.id === userID));
     });
 
-    checkLikeStatus();
-
     return () => unsubscribe();
-  }, [postID]);
+  }, [postID, userID]);
 
   const toggleLike = async () => {
-    if (liked) {
-      await deleteDoc(likeDocRef);
-    } else {
-      await setDoc(likeDocRef, {
-        postID: postID,
-        userID: userID,
-        timestamp: serverTimestamp(),
-      });
+    if (!postID || !userID) return;
+
+    const likeDocRef = doc(FIRESTORE_DB, "post", postID, "likes", userID);
+
+    try {
+      if (liked) {
+        await deleteDoc(likeDocRef);
+      } else {
+        await setDoc(likeDocRef, {
+          userID,
+          timestamp: serverTimestamp(),
+        });
+      }
+    } catch (error) {
+      console.error("Error toggling like:", error);
     }
-    setLiked(!liked);
   };
 
   return (

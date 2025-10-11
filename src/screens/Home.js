@@ -94,9 +94,20 @@ const Home = ({ navigation }) => {
     fetchFeed();
   }, []);
 
+  const navigateToProfile = (userId) => {
+    if (userId === currentUserId) {
+      navigation.navigate("Profile");
+    } else {
+      navigation.navigate("FriendProfile", { friendId: userId });
+    }
+  };
+
   const renderPost = ({ item }) => (
     <View style={styles.postItem}>
-      <View style={styles.postHeader}>
+      <TouchableOpacity
+        style={styles.postHeader}
+        onPress={() => navigateToProfile(item.userId)}
+      >
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.miniAvatar} />
         ) : (
@@ -105,7 +116,7 @@ const Home = ({ navigation }) => {
         <Text style={styles.miniUserName}>
           {item.firstName} {item.lastName}
         </Text>
-      </View>
+      </TouchableOpacity>
       <Text style={styles.postText}>{item.post}</Text>
 
       {item.images && item.images.length > 0 && (
@@ -126,7 +137,7 @@ const Home = ({ navigation }) => {
       )}
 
       <View style={styles.footerPost}>
-        <Likes postID={item.id} userID={item.userId} />
+        <Likes postID={item.id} userID={currentUserId} />
         <Comments postID={item.id} />
       </View>
       {selectedImage && (

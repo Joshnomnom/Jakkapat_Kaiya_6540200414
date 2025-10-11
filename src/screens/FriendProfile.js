@@ -185,7 +185,7 @@ const FriendProfile = ({ route, navigation }) => {
                 )}
 
                 <View style={styles.footerPost}>
-                  <Likes postID={item.id} userID={friendId} />
+                  <Likes postID={item.id} userID={currentUserId} />
                   <Comments postID={item.id} />
                 </View>
               </View>

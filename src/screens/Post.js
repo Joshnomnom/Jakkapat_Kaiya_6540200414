@@ -190,7 +190,7 @@ const Post = ({ navigation }) => {
         lastName,
         avatarUrl,
         post,
-        images: uploadedUrls, // Save array of images
+        images: uploadedUrls,
         timestamp: serverTimestamp(),
       });
 
@@ -231,7 +231,6 @@ const Post = ({ navigation }) => {
           style={styles.postField}
         />
 
-        {/* Hashtag helper */}
         <View style={styles.hashtagHelper}>
           <Text style={styles.hashtagHelperText}>
             Add hashtags like #travel #food #nature to help others find your
@@ -249,7 +248,6 @@ const Post = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
 
-        {/* Clear All button - only show when images are selected */}
         {images.length > 0 && (
           <TouchableOpacity
             style={styles.clearAllButton}
@@ -260,7 +258,6 @@ const Post = ({ navigation }) => {
           </TouchableOpacity>
         )}
 
-        {/* Display selected images */}
         <View style={styles.imagePreviewContainer}>
           {images.map((uri, index) => (
             <View key={index} style={styles.imageWrapper}>

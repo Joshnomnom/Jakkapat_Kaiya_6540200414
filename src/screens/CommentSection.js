@@ -440,6 +440,15 @@ const CommentSection = () => {
     setEditText("");
   };
 
+  const navigateToProfile = (userId) => {
+    const currentUserId = auth.currentUser?.uid;
+    if (userId === currentUserId) {
+      navigation.navigate("Profile");
+    } else {
+      navigation.navigate("FriendProfile", { friendId: userId });
+    }
+  };
+
   const renderReply = (reply, commentId) => {
     const userProfile = userProfiles[reply.userId] || {
       name: "Loading...",
@@ -454,21 +463,25 @@ const CommentSection = () => {
     return (
       <View key={reply.id} style={styles.replyItem}>
         <View style={styles.replyHeader}>
-          {userProfile.avatar ? (
-            <Image
-              source={{ uri: userProfile.avatar }}
-              style={styles.replyAvatar}
-            />
-          ) : (
-            <View style={styles.replyAvatarPlaceholder}>
-              <Ionicons name="person-outline" size={16} color="#FFFFFF" />
-            </View>
-          )}
+          <TouchableOpacity onPress={() => navigateToProfile(reply.userId)}>
+            {userProfile.avatar ? (
+              <Image
+                source={{ uri: userProfile.avatar }}
+                style={styles.replyAvatar}
+              />
+            ) : (
+              <View style={styles.replyAvatarPlaceholder}>
+                <Ionicons name="person-outline" size={16} color="#FFFFFF" />
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={styles.replyContent}>
             <View style={styles.replyTopRow}>
-              <Text style={styles.replyUserName}>
-                {isCurrentUser ? "You" : userProfile.name}
-              </Text>
+              <TouchableOpacity onPress={() => navigateToProfile(reply.userId)}>
+                <Text style={styles.replyUserName}>
+                  {isCurrentUser ? "You" : userProfile.name}
+                </Text>
+              </TouchableOpacity>
               {canManage && (
                 <TouchableOpacity
                   style={styles.menuButton}
@@ -532,18 +545,25 @@ const CommentSection = () => {
     return (
       <View style={styles.commentItem}>
         <View style={styles.commentHeader}>
-          {userProfile.avatar ? (
-            <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
-          ) : (
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person-outline" size={20} color="#FFFFFF" />
-            </View>
-          )}
+          <TouchableOpacity onPress={() => navigateToProfile(item.userID)}>
+            {userProfile.avatar ? (
+              <Image
+                source={{ uri: userProfile.avatar }}
+                style={styles.avatar}
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons name="person-outline" size={20} color="#FFFFFF" />
+              </View>
+            )}
+          </TouchableOpacity>
           <View style={styles.commentContent}>
             <View style={styles.commentTopRow}>
-              <Text style={styles.userName}>
-                {isCurrentUser ? "You" : userProfile.name}
-              </Text>
+              <TouchableOpacity onPress={() => navigateToProfile(item.userID)}>
+                <Text style={styles.userName}>
+                  {isCurrentUser ? "You" : userProfile.name}
+                </Text>
+              </TouchableOpacity>
               {canManage && (
                 <TouchableOpacity
                   style={styles.menuButton}

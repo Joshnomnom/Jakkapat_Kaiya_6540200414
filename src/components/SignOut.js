@@ -10,7 +10,6 @@ const SignOut = () => {
   const handleSignOut = async () => {
     try {
       await signOut(auth);
-      // Navigate to SignIn after successful sign out
       navigation.reset({
         index: 0,
         routes: [{ name: "SignIn" }],

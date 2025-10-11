@@ -65,17 +65,15 @@ const CommentInput = ({
     setIsSubmitting(true);
     try {
       if (replyingTo) {
-        // Add reply to the replies collection
         await addDoc(collection(FIRESTORE_DB, "replies"), {
           commentId: replyingTo.commentId,
           userId: currentUser.uid,
           reply: comment.trim(),
           timestamp: serverTimestamp(),
-          postID: postID, // Include postID for easier querying
+          postID: postID,
         });
         console.log("Reply added successfully");
       } else {
-        // Add regular comment to comments collection
         await addDoc(collection(FIRESTORE_DB, "comments"), {
           postID: postID,
           userID: currentUser.uid,
@@ -85,7 +83,6 @@ const CommentInput = ({
         console.log("Comment added successfully");
       }
 
-      // Clear input and notify parent component
       setComment("");
       if (onCommentAdded) onCommentAdded();
     } catch (error) {
@@ -158,7 +155,7 @@ const CommentInput = ({
 const styles = StyleSheet.create({
   keyboardAvoidingView: {
     position: "absolute",
-    bottom: 65, // Position above the Footer
+    bottom: 65,
     left: 0,
     right: 0,
     backgroundColor: "#FFFFFF",

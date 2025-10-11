@@ -35,7 +35,6 @@ import Comments from "../components/Comments";
 import EditProfile from "./EditProfile";
 
 const Profile = ({ navigation }) => {
-  // Get userId in a safe way
   const [userId, setUserId] = useState(null);
   const [avatarUrl, setAvatarUrl] = useState(null);
   const [firstName, setFirstName] = useState("");
@@ -94,7 +93,6 @@ const Profile = ({ navigation }) => {
 
       const currentUserId = currentUser.uid;
 
-      // Get user profile data
       const userDoc = await getDoc(doc(FIRESTORE_DB, "users", currentUserId));
       if (userDoc.exists()) {
         const userData = userDoc.data();
@@ -105,7 +103,6 @@ const Profile = ({ navigation }) => {
         console.log("User document does not exist");
       }
 
-      // Get user posts
       const postsQuery = query(
         collection(FIRESTORE_DB, "post"),
         where("userId", "==", currentUserId)
@@ -143,7 +140,6 @@ const Profile = ({ navigation }) => {
     fetchUserData();
   }, []);
 
-  // Post menu handlers
   const handlePostMenuPress = (postId, event) => {
     const { pageX, pageY } = event.nativeEvent;
     setShowPostMenu({ postId, x: pageX, y: pageY });
@@ -194,10 +190,8 @@ const Profile = ({ navigation }) => {
             text: "Delete",
             style: "destructive",
             onPress: async () => {
-              // Delete the post
               await deleteDoc(doc(FIRESTORE_DB, "post", postId));
 
-              // Delete all comments for this post
               const commentsQuery = query(
                 collection(FIRESTORE_DB, "comments"),
                 where("postID", "==", postId)
@@ -207,7 +201,6 @@ const Profile = ({ navigation }) => {
                 deleteDoc(doc.ref)
               );
 
-              // Delete all replies for this post
               const repliesQuery = query(
                 collection(FIRESTORE_DB, "replies"),
                 where("postID", "==", postId)
@@ -217,7 +210,6 @@ const Profile = ({ navigation }) => {
                 deleteDoc(doc.ref)
               );
 
-              // Delete all likes for this post
               const likesQuery = query(
                 collection(FIRESTORE_DB, "likes"),
                 where("postID", "==", postId)
@@ -235,7 +227,7 @@ const Profile = ({ navigation }) => {
 
               setShowPostMenu(null);
               showAlert("Post deleted successfully!", "success");
-              fetchUserData(); // Refresh posts
+              fetchUserData();
             },
           },
         ]
@@ -352,7 +344,6 @@ const Profile = ({ navigation }) => {
                     <Text style={styles.postText}>{item.post}</Text>
                   )}
 
-                  {/* Display post images */}
                   {item.images && item.images.length > 0 && (
                     <View style={styles.postImagesContainer}>
                       {item.images.map((imageUrl, index) => (
@@ -399,7 +390,6 @@ const Profile = ({ navigation }) => {
       </View>
       <Footer navigation={navigation} />
 
-      {/* Post Menu Modal */}
       <Modal
         visible={showPostMenu !== null}
         transparent={true}

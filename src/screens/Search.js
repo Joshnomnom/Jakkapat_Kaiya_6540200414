@@ -41,6 +41,7 @@ const Search = ({ navigation }) => {
   const searchTimeoutRef = useRef(null);
   const [suggestedUsers, setSuggestedUsers] = useState([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
+  const currentUserId = auth.currentUser?.uid;
 
   const showAlert = (message, type = "error") => {
     setModalVisible(true);
@@ -67,7 +68,6 @@ const Search = ({ navigation }) => {
     try {
       setLoadingSuggestions(true);
 
-      // Get current user ID
       const currentUserId = auth.currentUser?.uid;
 
       const postsRef = collection(FIRESTORE_DB, "post");
@@ -82,7 +82,6 @@ const Search = ({ navigation }) => {
         }
       });
 
-      // Get users with posts and their post counts
       const usersRef = collection(FIRESTORE_DB, "users");
       const usersSnapshot = await getDocs(usersRef);
 
@@ -92,7 +91,6 @@ const Search = ({ navigation }) => {
         const userId = doc.id;
         const postCount = userPostCounts[userId] || 0;
 
-        // Exclude current user and only include users with posts
         if (postCount > 0 && userId !== currentUserId) {
           usersWithPostCounts.push({
             id: userId,
@@ -102,7 +100,6 @@ const Search = ({ navigation }) => {
         }
       });
 
-      // Sort by post count
       const topUsers = usersWithPostCounts
         .sort((a, b) => b.postCount - a.postCount)
         .slice(0, 5);
@@ -355,9 +352,20 @@ const Search = ({ navigation }) => {
     );
   };
 
+  const navigateToProfile = (userId) => {
+    if (userId === currentUserId) {
+      navigation.navigate("Profile");
+    } else {
+      navigation.navigate("FriendProfile", { friendId: userId });
+    }
+  };
+
   const renderPostItem = ({ item }) => (
     <View style={styles.postItem}>
-      <View style={styles.postHeader}>
+      <TouchableOpacity
+        style={styles.postHeader}
+        onPress={() => navigateToProfile(item.userId)}
+      >
         {item.avatarUrl ? (
           <Image source={{ uri: item.avatarUrl }} style={styles.miniAvatar} />
         ) : (
@@ -366,7 +374,7 @@ const Search = ({ navigation }) => {
         <Text style={styles.miniUserName}>
           {item.firstName} {item.lastName}
         </Text>
-      </View>
+      </TouchableOpacity>
       <Text style={styles.postText}>{item.post}</Text>
 
       {item.images && item.images.length > 0 && (
@@ -387,7 +395,7 @@ const Search = ({ navigation }) => {
       )}
 
       <View style={styles.footerPost}>
-        <Likes postID={item.id} userID={item.userId} />
+        <Likes postID={item.id} userID={currentUserId} />
         <Comments postID={item.id} />
       </View>
     </View>
