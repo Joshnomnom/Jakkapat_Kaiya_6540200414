@@ -18,6 +18,7 @@ import CustomModals from "../components/CustomModal";
 import { Picker } from "@react-native-picker/picker";
 import * as ImagePicker from "expo-image-picker";
 import axios from "axios";
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from "@env";
 
 const Post = ({ navigation }) => {
   const [avatarUrl, setAvatarUrl] = useState(null);
@@ -74,7 +75,7 @@ const Post = ({ navigation }) => {
       }
 
       console.log("Preparing image upload for user:", userId);
-      //กำหนดชื่อของไฟล์์จะโหลด
+      //กำหนดชื่อของไฟล์จะโหลด
       const fileName =
         type === "post"
           ? `profile_picture_${userId}.jpg`
@@ -91,14 +92,14 @@ const Post = ({ navigation }) => {
         type: "image/jpeg",
         name: fileName,
       });
-      formData.append("upload_preset", "Beluga");
-      formData.append("cloud_name", "dsmf4sq2d");
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
       formData.append("folder", folderPath);
 
       console.log("Sending image to Cloudinary...");
       //ส่ง Cloudinary
       const response = await axios.post(
-        "https://api.cloudinary.com/v1_1/dsmf4sq2d/image/upload",
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         formData,
         {
           headers: {

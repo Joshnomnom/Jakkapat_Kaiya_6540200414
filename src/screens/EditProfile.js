@@ -4,6 +4,8 @@ import { Ionicons } from "@expo/vector-icons";
 import * as ImagePicker from "expo-image-picker";
 import { useNavigation } from "@react-navigation/native";
 import axios from "axios";
+import { CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET } from "@env";
+
 import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
 import { FIRESTORE_DB, auth } from "../services/FirebaseConfig";
 import TextInputField from "../components/TextInputField";
@@ -119,12 +121,12 @@ const EditProfile = () => {
         name: fileName,
       });
 
-      formData.append("upload_preset", "Beluga");
-      formData.append("cloud_name", "dsmf4sq2d");
+      formData.append("upload_preset", CLOUDINARY_UPLOAD_PRESET);
+      formData.append("cloud_name", CLOUDINARY_CLOUD_NAME);
       formData.append("folder", folderPath);
 
       const response = await axios.post(
-        "https://api.cloudinary.com/v1_1/dsmf4sq2d/image/upload",
+        `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`,
         formData,
         {
           headers: {
