@@ -1,3 +1,7 @@
+# Project overview
+
+**https://youtu.be/byGtYoh9vyI**
+
 # Beluga - Social Media App
 
 Beluga is a social media application built with React Native and Firebase, allowing users to create profiles, share posts with images, follow friends, like and comment on posts.
