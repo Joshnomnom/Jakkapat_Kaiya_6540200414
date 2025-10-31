@@ -1,6 +1,6 @@
 # Project overview
 
-**https://youtu.be/byGtYoh9vyI**
+**https://youtu.be/NkIbVzRib5w** (demo video)
 
 # Beluga - Social Media App
 
